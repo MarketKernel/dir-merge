@@ -1,7 +1,9 @@
 [package]
 name = "dir-merge"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
+description = "Compare and merge files and folders"
+repository = "https://github.com/MarketKernel/dir-merge"
 
 [dependencies]
 chardetng = "1.0.0"

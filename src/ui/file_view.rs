@@ -433,7 +433,7 @@ impl FileView {
             let gutter_w = digits.max(3) as f32 * char_w + 20.0;
 
             // Headers aligned with the panes.
-            let header = Rect::from_min_size(area.min, vec2(area.width(), 30.0));
+            let header = Rect::from_min_size(area.min, vec2(area.width(), 32.0));
             area.min.y = header.max.y;
             let lay = Lay::new(area, gutter_w, false);
             self.headers(ui, header, &lay, cx, &mut acts);
@@ -464,9 +464,9 @@ impl FileView {
             ui.add_space(ui.available_height() * 0.3);
             ui.label(RichText::new("🗋").size(40.0).color(pal.text_faint));
             let (msg, col) = if same {
-                ("Binary files are identical", pal.ins_mark)
+                ("Binary files are identical", pal.text)
             } else {
-                ("Binary files differ", pal.different)
+                ("Binary files differ", pal.text)
             };
             ui.label(RichText::new(msg).size(20.0).color(col));
             ui.add_space(6.0);
@@ -578,11 +578,11 @@ impl FileView {
                 } else {
                     "No differences (with current options)"
                 };
-                ui.label(RichText::new(format!("✔ {msg}")).color(pal.ins_mark));
+                ui.label(RichText::new(format!("✔ {msg}")).color(pal.text));
             } else {
                 ui.label(
                     RichText::new(format!("{} difference{}", fmt_count(n), if n == 1 { "" } else { "s" }))
-                        .color(pal.different),
+                        .color(pal.text),
                 );
                 if let Some(c) = self.current {
                     ui.label(RichText::new(format!("·  {} of {}", c + 1, fmt_count(n))).color(pal.text_dim));
@@ -636,7 +636,7 @@ impl FileView {
             let dirty = d.sides[side].dirty;
             ui.scope_builder(UiBuilder::new().max_rect(r).layout(Layout::left_to_right(Align::Center)), |ui| {
                 ui.spacing_mut().item_spacing.x = 6.0;
-                let accent = if side == 0 { pal.left_only } else { pal.right_only };
+                let accent = if side == 0 { pal.row_left_only_bg } else { pal.row_right_only_bg };
                 ui.label(RichText::new("■").color(accent));
                 let path = self.paths[side].as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "Untitled".into());
                 let fname = self.paths[side].as_deref().map(file_name).unwrap_or_else(|| "Untitled".into());
@@ -658,7 +658,7 @@ impl FileView {
                     ));
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         let name = if dirty { format!("{fname} •") } else { fname.clone() };
-                        ui.label(RichText::new(name).strong().color(if dirty { pal.different } else { pal.text }))
+                        ui.label(RichText::new(name).strong().color(pal.text))
                             .on_hover_text(&path);
                         ui.add(egui::Label::new(RichText::new(dir).small().color(pal.text_dim)).truncate()).on_hover_text(&path);
                     });
@@ -897,7 +897,7 @@ impl FileView {
                     if whole_line_changed {
                         let w = galley.size().x;
                         let hl = Rect::from_min_size(pos2(pos.x - 2.0, y + 1.0), vec2(w + 4.0, row_h - 2.0));
-                        painter.with_clip_rect(tp).rect_filled(hl, 3.0, pal.mod_inline.gamma_multiply(0.45));
+                        painter.with_clip_rect(tp).rect_filled(hl, 3.0, pal.mod_inline);
                     }
                     painter.with_clip_rect(tp.intersect(area)).galley(pos, galley, pal.text);
                 }

@@ -34,10 +34,10 @@ pub fn tool_button(ui: &mut Ui, icon: &str, label: &str, tip: &str, enabled: boo
 }
 
 /// A rounded "chip" toggle used for filters.
-pub fn chip(ui: &mut Ui, on: &mut bool, text: &str, color: Color32, pal: &Palette) -> Response {
-    let fill = if *on { color.gamma_multiply(if pal.dark { 0.25 } else { 0.18 }) } else { Color32::TRANSPARENT };
-    let stroke = if *on { color.gamma_multiply(0.8) } else { pal.border };
-    let txt = RichText::new(text).color(if *on { color } else { pal.text_dim });
+/// Toggle chip; `fill` is the row background of the status it filters.
+pub fn chip(ui: &mut Ui, on: &mut bool, text: &str, fill: Color32, pal: &Palette) -> Response {
+    let (fill, stroke, txt) = if *on { (fill, pal.text_faint, pal.text) } else { (Color32::TRANSPARENT, pal.border, pal.text_dim) };
+    let txt = RichText::new(text).color(txt);
     let r = ui.add(Button::new(txt).fill(fill).stroke(egui::Stroke::new(1.0, stroke)).corner_radius(12));
     if r.clicked() {
         *on = !*on;

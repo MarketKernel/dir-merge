@@ -1,9 +1,9 @@
-//! Top-level application: tabs, theme, settings window, global shortcuts.
+//! Top-level application: tabs, theme, settings and about windows, global shortcuts.
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use egui::{Align, Align2, Color32, FontId, Frame, Key, KeyboardShortcut, Layout, Margin, Modifiers, RichText, Sense, Stroke, Ui, vec2};
+use egui::{Align, Align2, Color32, Frame, Key, KeyboardShortcut, Layout, Margin, Modifiers, RichText, Sense, Stroke, Ui, vec2};
 
 use crate::highlight;
 use crate::settings::{Settings, ThemePref};
@@ -58,6 +58,7 @@ pub struct DirMergeApp {
     close_req: Option<CloseReq>,
     allow_close: bool,
     show_settings: bool,
+    show_about: bool,
     pending: Vec<AppAction>,
     #[cfg(feature = "autotest")]
     driver: Option<crate::autotest::Driver>,
@@ -66,7 +67,9 @@ pub struct DirMergeApp {
 impl DirMergeApp {
     pub fn new(cc: &eframe::CreationContext<'_>, args: Vec<PathBuf>) -> Self {
         highlight::warm_up();
-        let settings: Settings = cc.storage.and_then(|s| eframe::get_value(s, Settings::KEY)).unwrap_or_default();
+        theme::install_fonts(&cc.egui_ctx);
+        let mut settings: Settings = cc.storage.and_then(|s| eframe::get_value(s, Settings::KEY)).unwrap_or_default();
+        settings.migrate();
         let mut app = DirMergeApp {
             settings,
             tabs: vec![Tab::Home(HomeView::default())],
@@ -76,6 +79,7 @@ impl DirMergeApp {
             close_req: None,
             allow_close: false,
             show_settings: false,
+            show_about: false,
             pending: Vec::new(),
             #[cfg(feature = "autotest")]
             driver: crate::autotest::Driver::from_env(),
@@ -174,10 +178,10 @@ impl DirMergeApp {
             for i in 0..self.tabs.len() {
                 let title = self.tabs[i].title();
                 let active = i == self.active;
-                let font = FontId::proportional(13.0);
+                let font = theme::ui_font(ui, 0.0);
                 let galley = ui.painter().layout_no_wrap(title.clone(), font.clone(), pal.text);
                 let w = (galley.size().x + 44.0).clamp(90.0, 280.0);
-                let (rect, resp) = ui.allocate_exact_size(vec2(w, 30.0), Sense::click());
+                let (rect, resp) = ui.allocate_exact_size(vec2(w, 32.0), Sense::click());
                 let hovered = resp.hovered();
                 let p = ui.painter();
                 if active {
@@ -205,7 +209,7 @@ impl DirMergeApp {
                     if cresp.hovered() {
                         ui.painter().rect_filled(cr, 4.0, pal.hover);
                     }
-                    ui.painter().text(cr.center(), Align2::CENTER_CENTER, "✖", FontId::proportional(10.0), pal.text_dim);
+                    ui.painter().text(cr.center(), Align2::CENTER_CENTER, "✖", theme::ui_font(ui, -3.5), pal.text_dim);
                 }
                 if cresp.clicked() || resp.middle_clicked() {
                     close = Some(i);
@@ -222,6 +226,9 @@ impl DirMergeApp {
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(6.0);
+                if ui.add(egui::Button::new(RichText::new("ℹ").size(15.0)).frame_when_inactive(false)).on_hover_text("About DirMerge").clicked() {
+                    self.show_about = !self.show_about;
+                }
                 if ui.add(egui::Button::new(RichText::new("⚙").size(15.0)).frame_when_inactive(false)).on_hover_text("Settings").clicked() {
                     self.show_settings = !self.show_settings;
                 }
@@ -318,6 +325,32 @@ impl DirMergeApp {
                 }
             });
         self.show_settings = open;
+    }
+
+    fn about_window(&mut self, ctx: &egui::Context, pal: &Palette) {
+        let mut open = self.show_about;
+        egui::Window::new("About")
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.set_width(320.0);
+                ui.vertical_centered(|ui| {
+                    ui.add_space(4.0);
+                    ui.label(RichText::new("DirMerge").size(26.0).strong().color(pal.text));
+                    ui.label(RichText::new(format!("Version {}", env!("CARGO_PKG_VERSION"))).color(pal.text_dim));
+                    ui.add_space(8.0);
+                    ui.label(RichText::new(env!("CARGO_PKG_DESCRIPTION")).color(pal.text));
+                    ui.add_space(8.0);
+                    ui.hyperlink(env!("CARGO_PKG_REPOSITORY"));
+                    ui.add_space(4.0);
+                });
+            });
+        if ctx.input(|i| i.key_pressed(Key::Escape)) {
+            open = false;
+        }
+        self.show_about = open;
     }
 
     fn close_dialog(&mut self, ctx: &egui::Context, pal: &Palette) {
@@ -478,6 +511,7 @@ impl eframe::App for DirMergeApp {
         }
 
         self.settings_window(&ctx);
+        self.about_window(&ctx, &pal);
         self.close_dialog(&ctx, &pal);
     }
 

@@ -20,6 +20,10 @@ pub struct RecentPair {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// Bumped when defaults change in a way saved settings should pick up.
+    /// Missing in old saves, so it reads as 0 there.
+    #[serde(default)]
+    pub version: u32,
     pub theme: ThemePref,
     pub ui_font_size: f32,
     pub code_font_size: f32,
@@ -40,9 +44,10 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
+            version: Settings::VERSION,
             theme: ThemePref::System,
-            ui_font_size: 13.5,
-            code_font_size: 13.0,
+            ui_font_size: 15.0,
+            code_font_size: 14.0,
             tab_width: 4,
             show_whitespace: false,
             syntax_highlighting: true,
@@ -61,6 +66,22 @@ impl Default for Settings {
 
 impl Settings {
     pub const KEY: &'static str = "dir-merge-settings";
+    const VERSION: u32 = 1;
+
+    /// Brings settings saved by an older build up to date.
+    pub fn migrate(&mut self) {
+        if self.version < 1 {
+            // Font sizes still at the old defaults follow the new, larger ones.
+            let d = Settings::default();
+            if self.ui_font_size == 13.5 {
+                self.ui_font_size = d.ui_font_size;
+            }
+            if self.code_font_size == 13.0 {
+                self.code_font_size = d.code_font_size;
+            }
+        }
+        self.version = Settings::VERSION;
+    }
 
     pub fn add_recent(&mut self, left: &str, right: &str) {
         let pair = RecentPair { left: left.to_string(), right: right.to_string() };

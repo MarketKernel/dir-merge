@@ -6,14 +6,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use crossbeam_channel::Receiver;
-use egui::{Align, Align2, Color32, FontId, Frame, Id, Key, Layout, Margin, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
+use egui::{Align, Align2, Color32, Frame, Id, Key, Layout, Margin, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
 
 use super::{AppAction, ViewCtx, chip, fmt_count, fmt_size, fmt_time, tool_button};
 use crate::dircmp::{self, CompareJob, CompareMode, DirTree, Msg, Status};
-use crate::theme::Palette;
+use crate::theme::{self, Palette};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-const ROW_H: f32 = 24.0;
+const ROW_H: f32 = 26.0;
 
 enum Pending {
     Copy { items: Vec<u32>, to_right: bool },
@@ -362,12 +362,12 @@ impl DirView {
             });
             ui.separator();
             let s = &mut *cx.settings;
-            chip(ui, &mut s.show_identical, &format!("= {}", fmt_count(stats.identical)), pal.identical, &pal).on_hover_text("Identical");
-            chip(ui, &mut s.show_different, &format!("≠ {}", fmt_count(stats.different + stats.errors)), pal.different, &pal)
+            chip(ui, &mut s.show_identical, &format!("= {}", fmt_count(stats.identical)), pal.editor_bg, &pal).on_hover_text("Identical");
+            chip(ui, &mut s.show_different, &format!("≠ {}", fmt_count(stats.different + stats.errors)), pal.row_different_bg, &pal)
                 .on_hover_text("Different");
-            chip(ui, &mut s.show_left_only, &format!("⏴ {}", fmt_count(stats.left_only)), pal.left_only, &pal)
+            chip(ui, &mut s.show_left_only, &format!("⏴ {}", fmt_count(stats.left_only)), pal.row_left_only_bg, &pal)
                 .on_hover_text("Only in left folder");
-            chip(ui, &mut s.show_right_only, &format!("⏵ {}", fmt_count(stats.right_only)), pal.right_only, &pal)
+            chip(ui, &mut s.show_right_only, &format!("⏵ {}", fmt_count(stats.right_only)), pal.row_right_only_bg, &pal)
                 .on_hover_text("Only in right folder");
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -399,7 +399,7 @@ impl DirView {
         ui.add_space(2.0);
         ui.horizontal(|ui| {
             let w = (ui.available_width() - 16.0) / 2.0;
-            for (p, col, icon) in [(&self.left, pal.left_only, "■"), (&self.right, pal.right_only, "■")] {
+            for (p, col, icon) in [(&self.left, pal.row_left_only_bg, "■"), (&self.right, pal.row_right_only_bg, "■")] {
                 ui.allocate_ui(vec2(w, 20.0), |ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(icon).color(col));
@@ -428,9 +428,9 @@ impl DirView {
                 let s = t.stats();
                 let differs = s.different + s.left_only + s.right_only + s.errors;
                 if differs == 0 {
-                    ui.label(RichText::new("✔ Folders are identical").color(pal.ins_mark));
+                    ui.label(RichText::new("✔ Folders are identical").color(pal.text));
                 } else {
-                    ui.label(RichText::new(format!("{} differences", fmt_count(differs))).color(pal.different));
+                    ui.label(RichText::new(format!("{} differences", fmt_count(differs))).color(pal.text));
                 }
                 if let Some(e) = self.elapsed {
                     ui.label(
@@ -467,19 +467,19 @@ impl DirView {
         let cols = Cols { name: name_w, status: status_w, size: size_w, date: date_w };
 
         // Header.
-        let header = Rect::from_min_size(full.min, vec2(w, 26.0));
+        let header = Rect::from_min_size(full.min, vec2(w, 28.0));
         let hp = ui.painter_at(header);
         hp.rect_filled(header, 0.0, pal.panel_bg);
         hp.line_segment([header.left_bottom(), header.right_bottom()], Stroke::new(1.0, pal.border));
-        let hf = FontId::proportional(12.0);
+        let hf = theme::ui_font(ui, -1.0);
         let mut x = header.left() + 10.0;
         let titles: [(&str, f32, Color32); 6] = [
             ("Name", cols.name, pal.text_dim),
             ("Comparison", cols.status, pal.text_dim),
-            ("Left size", cols.size, pal.left_only),
-            ("Left modified", cols.date, pal.left_only),
-            ("Right size", cols.size, pal.right_only),
-            ("Right modified", cols.date, pal.right_only),
+            ("Left size", cols.size, pal.text_dim),
+            ("Left modified", cols.date, pal.text_dim),
+            ("Right size", cols.size, pal.text_dim),
+            ("Right modified", cols.date, pal.text_dim),
         ];
         for (t, cw, col) in titles {
             if cw > 0.0 {
@@ -524,18 +524,21 @@ impl DirView {
         let n = &t.nodes[idx as usize];
         let p = ui.painter_at(rect);
         let selected = self.sel.contains(&idx);
-        let (status_text, status_col, tint) = status_style(n, &pal);
+        let (status_text, tint) = status_style(n, &pal);
         if selected {
             p.rect_filled(rect, 0.0, pal.selection);
-        } else if resp.hovered() {
-            p.rect_filled(rect, 0.0, pal.hover);
-        } else if let Some(tint) = tint {
-            p.rect_filled(rect, 0.0, tint);
+        } else {
+            if let Some(tint) = tint {
+                p.rect_filled(rect, 0.0, tint);
+            }
+            if resp.hovered() {
+                p.rect_filled(rect, 0.0, pal.hover);
+            }
         }
         if self.cursor == Some(ri) {
             p.rect_stroke(rect.shrink(0.5), 0.0, Stroke::new(1.0, pal.accent.gamma_multiply(0.6)), egui::StrokeKind::Inside);
         }
-        let font = FontId::proportional(13.0);
+        let font = theme::ui_font(ui, 0.0);
         let cy = rect.center().y;
         let mut x = rect.left() + 10.0 + (n.depth.saturating_sub(1)) as f32 * 16.0;
         // Indent guides.
@@ -548,36 +551,30 @@ impl DirView {
             let open = self.expanded[idx as usize] || !self.filter.trim().is_empty();
             let ar = Rect::from_center_size(pos2(x + 6.0, cy), vec2(14.0, 14.0));
             let aresp = ui.interact(ar, self.id().with(("exp", idx)), Sense::click());
-            p.text(ar.center(), Align2::CENTER_CENTER, if open { "⏷" } else { "⏵" }, FontId::proportional(11.0), if aresp.hovered() { pal.text } else { pal.text_dim });
+            p.text(ar.center(), Align2::CENTER_CENTER, if open { "⏷" } else { "⏵" }, theme::ui_font(ui, -2.0), if aresp.hovered() { pal.text } else { pal.text_dim });
             toggle = aresp.clicked();
         }
         x += 16.0;
         let icon_col = if n.is_dir { pal.accent } else { pal.text_dim };
-        p.text(pos2(x, cy), Align2::LEFT_CENTER, if n.is_dir { "📁" } else { "📄" }, FontId::proportional(13.0), icon_col);
+        p.text(pos2(x, cy), Align2::LEFT_CENTER, if n.is_dir { "📁" } else { "📄" }, font.clone(), icon_col);
         x += 20.0;
-        let name_col = match n.status {
-            Status::LeftOnly => pal.left_only,
-            Status::RightOnly => pal.right_only,
-            Status::Different | Status::Error => pal.text,
-            _ => if n.is_dir { pal.text } else { pal.text.gamma_multiply(0.85) },
-        };
         let name_clip = Rect::from_x_y_ranges(rect.left()..=rect.left() + cols.name - 6.0, rect.y_range());
-        p.with_clip_rect(name_clip).text(pos2(x, cy), Align2::LEFT_CENTER, &n.name, font.clone(), name_col);
+        p.with_clip_rect(name_clip).text(pos2(x, cy), Align2::LEFT_CENTER, &n.name, font.clone(), pal.text);
 
         let mut cx_ = rect.left() + 10.0 + cols.name;
-        p.text(pos2(cx_, cy), Align2::LEFT_CENTER, status_text, FontId::proportional(12.5), status_col);
+        p.text(pos2(cx_, cy), Align2::LEFT_CENTER, status_text, theme::ui_font(ui, -0.5), pal.text);
         cx_ += cols.status;
-        let small = FontId::proportional(12.0);
+        let small = theme::ui_font(ui, -1.0);
         for side in [n.left, n.right] {
             if let Some(m) = side {
                 if !m.is_dir {
-                    p.text(pos2(cx_ + cols.size - 12.0, cy), Align2::RIGHT_CENTER, fmt_size(m.size), small.clone(), pal.text_dim);
+                    p.text(pos2(cx_ + cols.size - 12.0, cy), Align2::RIGHT_CENTER, fmt_size(m.size), small.clone(), pal.text);
                 }
                 if cols.date > 0.0 {
-                    p.text(pos2(cx_ + cols.size, cy), Align2::LEFT_CENTER, fmt_time(m.mtime), small.clone(), pal.text_faint);
+                    p.text(pos2(cx_ + cols.size, cy), Align2::LEFT_CENTER, fmt_time(m.mtime), small.clone(), pal.text);
                 }
             } else {
-                p.text(pos2(cx_ + cols.size - 12.0, cy), Align2::RIGHT_CENTER, "—", small.clone(), pal.text_faint);
+                p.text(pos2(cx_ + cols.size - 12.0, cy), Align2::RIGHT_CENTER, "—", small.clone(), pal.text);
             }
             cx_ += cols.size + cols.date;
         }
@@ -758,16 +755,16 @@ struct Cols {
     date: f32,
 }
 
-fn status_style(n: &dircmp::Node, pal: &Palette) -> (String, Color32, Option<Color32>) {
-    let tint = |c: Color32| Some(c.gamma_multiply(if pal.dark { 0.07 } else { 0.06 }));
+/// Status label and row background.
+fn status_style(n: &dircmp::Node, pal: &Palette) -> (String, Option<Color32>) {
     match n.status {
-        Status::Pending => ("Comparing…".into(), pal.text_faint, None),
-        Status::Identical => ("Identical".into(), pal.identical, None),
-        Status::Different if n.is_dir => (format!("{} different", n.diff_count), pal.different, tint(pal.different)),
-        Status::Different => (if n.error.is_some() { "Type differs".into() } else { "Different".into() }, pal.different, tint(pal.different)),
-        Status::LeftOnly => (if n.is_dir { "Left only (folder)".into() } else { "Left only".into() }, pal.left_only, tint(pal.left_only)),
-        Status::RightOnly => (if n.is_dir { "Right only (folder)".into() } else { "Right only".into() }, pal.right_only, tint(pal.right_only)),
-        Status::Error => ("Error".into(), pal.error, tint(pal.error)),
+        Status::Pending => ("Comparing…".into(), None),
+        Status::Identical => ("Identical".into(), None),
+        Status::Different if n.is_dir => (format!("{} different", n.diff_count), Some(pal.row_different_bg)),
+        Status::Different => (if n.error.is_some() { "Type differs".into() } else { "Different".into() }, Some(pal.row_different_bg)),
+        Status::LeftOnly => (if n.is_dir { "Left only (folder)".into() } else { "Left only".into() }, Some(pal.row_left_only_bg)),
+        Status::RightOnly => (if n.is_dir { "Right only (folder)".into() } else { "Right only".into() }, Some(pal.row_right_only_bg)),
+        Status::Error => ("Error".into(), Some(pal.error.gamma_multiply(if pal.dark { 0.07 } else { 0.06 }))),
     }
 }
 
@@ -935,7 +932,7 @@ impl DirView {
             ui.add_space(6.0);
             egui::ScrollArea::vertical().max_height(160.0).show(ui, |ui| {
                 for &i in items.iter().take(50) {
-                    ui.label(RichText::new(t.rel_path(i).display().to_string()).monospace().size(12.0));
+                    ui.label(RichText::new(t.rel_path(i).display().to_string()).monospace());
                 }
                 if items.len() > 50 {
                     ui.label(format!("… and {} more", items.len() - 50));

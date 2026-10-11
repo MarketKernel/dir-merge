@@ -1,100 +1,103 @@
 # DirMerge
 
-Кроссплатформенный (macOS, Windows, Linux) инструмент для сравнения и слияния файлов и папок в духе WinMerge, написанный на Rust.
+A cross-platform (macOS, Windows, Linux) file and folder diff and merge tool in the spirit of WinMerge, written in Rust.
 
-## Возможности
+## Features
 
-**Сравнение файлов**
-- Две панели с синхронной прокруткой; строки выравниваются, пустые места заштрихованы.
-- Подсветка синтаксиса для 185 языков (грамматики Sublime Text из `bat` через `syntect` + `two-face`), 32 цветовые схемы.
-- Отличия внутри строк подсвечиваются по словам с уточнением до символов. Похожие строки внутри блока изменений ставятся друг напротив друга.
-- Слияние: кнопки ⏵/⏴ между панелями у каждого отличия, копирование всех отличий в одну сторону, отмена и повтор.
-- Редактирование: двойной клик по строке, вставка и удаление строк через контекстное меню.
-- Сохранение атомарное (через временный файл). Кодировка, BOM и концы строк исходного файла сохраняются.
-- Поиск по обоим файлам, переход к строке, полоса обзора всех отличий слева.
-- Настройки сравнения: игнорировать пробелы (изменения в их количестве или все), регистр, пустые строки.
-- Кодировки: UTF-8 (с BOM и без), UTF-16 LE/BE, однобайтовые и CJK (Windows-1251, Shift_JIS, …) с автоопределением.
-- Бинарные файлы распознаются автоматически.
-- Если файл изменили снаружи, появляется баннер с предложением перезагрузить его.
+### File comparison
 
-**Сравнение папок**
-- Рекурсивное сканирование в фоне; файлы сравниваются параллельно (rayon).
-- Режимы сравнения: по содержимому, по размеру и дате, только по размеру.
-- Дерево с итогами по папкам; фильтры (одинаковые, разные, только слева, только справа) со счётчиками; фильтр по имени.
-- Копирование файлов и папок влево или вправо, удаление в Корзину.
-- Маски исключений (по умолчанию `.git, .svn, .hg, .DS_Store, …`).
-- Двойной клик по файлу открывает его сравнение в новой вкладке. После сохранения файла строка в дереве обновляется.
+- Two panes with synchronized scrolling; lines are aligned and gaps are hatched.
+- Syntax highlighting for 185 languages (Sublime Text grammars from `bat` via `syntect` + `two-face`), 32 color schemes.
+- Changes within a line are highlighted word by word, refined down to characters. Similar lines inside a changed block are placed opposite each other.
+- Merging: ⏵/⏴ buttons between the panes for every difference, copy all differences to one side, undo and redo.
+- Editing: double-click a line to edit it; insert and delete lines from the context menu.
+- Saving is atomic (via a temporary file). The original encoding, BOM and line endings are preserved.
+- Search across both files, go to line, and an overview bar of all differences on the left.
+- Comparison options: ignore whitespace (changes in amount, or all of it), case, blank lines.
+- Encodings: UTF-8 (with or without BOM), UTF-16 LE/BE, single-byte and CJK encodings (Windows-1251, Shift_JIS, …) with auto-detection.
+- Binary files are detected automatically.
+- If a file is changed by another program, a banner offers to reload it.
 
-**Большие файлы**
-- Файлы от 4 МБ открываются через `mmap`: в памяти лежит только индекс строк, текст подгружается ОС по мере чтения.
-- Правки хранятся в построчной piece table. Слияние блока не копирует текст, а только ссылается на диапазон строк другого файла.
-- Отрисовка виртуализирована: в каждом кадре рисуются только видимые строки. Позиция прокрутки хранится в `f64`, поэтому прокрутка точная и на десятках миллионов строк.
-- Подсветка синтаксиса работает в отдельном потоке. Состояние парсера сохраняется каждые 256 строк. При переходе далеко вперёд разбор начинается за 400 строк до цели, поэтому конец огромного файла подсвечивается сразу.
-- Пример: два файла по 1,5 млн строк (по 67 МБ) загружаются и сравниваются примерно за 1,2 с на Apple Silicon.
+### Folder comparison
 
-## Сборка
+- Recursive scanning in the background; files are compared in parallel (rayon).
+- Comparison modes: by content, by size and date, by size only.
+- A tree with per-folder totals; filters (identical, different, left only, right only) with counters; a name filter.
+- Copy files and folders left or right, delete to the Trash.
+- Exclusion masks (default `.git, .svn, .hg, .DS_Store, …`).
+- Double-clicking a file opens its comparison in a new tab. After the file is saved, its row in the tree is refreshed.
 
-Нужен Rust 1.92 или новее.
+### Large files
 
-Быстрая сборка скриптом:
+- Files of 4 MB and larger are opened via `mmap`: only the line index is kept in memory, and the OS pages the text in as it is read.
+- Edits are stored in a line-based piece table. Merging a block does not copy text; it only references a range of lines in the other file.
+- Rendering is virtualized: each frame draws only the visible lines. The scroll position is stored as `f64`, so scrolling stays precise even with tens of millions of lines.
+- Syntax highlighting runs on a separate thread. The parser state is checkpointed every 256 lines. When jumping far ahead, parsing starts 400 lines before the target, so the end of a huge file is highlighted immediately.
+- Example: two files of 1.5 million lines (67 MB each) load and compare in about 1.2 s on Apple Silicon.
+
+## Building
+
+Requires Rust 1.92 or newer.
+
+Quick build with the script:
 
 ```sh
-./build_scripts/build.sh                 # release-сборка
-./build_scripts/build.sh --debug         # debug-сборка
-./build_scripts/build.sh --test          # тесты, затем release-сборка
-./build_scripts/build.sh --run a.rs b.rs # собрать и сразу запустить
+./build_scripts/build.sh                 # release build
+./build_scripts/build.sh --debug         # debug build
+./build_scripts/build.sh --test          # tests, then a release build
+./build_scripts/build.sh --run a.rs b.rs # build and launch right away
 ```
 
-Или вручную:
+Or manually:
 
 ```sh
 cargo build --release
-./target/release/dir-merge                  # стартовый экран
-./target/release/dir-merge left.rs right.rs # сравнить файлы
-./target/release/dir-merge dirA dirB        # сравнить папки
+./target/release/dir-merge                  # start screen
+./target/release/dir-merge left.rs right.rs # compare files
+./target/release/dir-merge dirA dirB        # compare folders
 ```
 
-На Linux для сборки нужны заголовки X11/Wayland:
+On Linux, building requires the X11/Wayland headers:
 `sudo apt install libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`.
 
-CI (`.github/workflows/ci.yml`) собирает и тестирует проект на всех трёх ОС.
+CI (`.github/workflows/ci.yml`) builds and tests the project on all three OSes.
 
-## Горячие клавиши
+## Keyboard shortcuts
 
-| Действие | Клавиши |
+| Action | Keys |
 |---|---|
-| Следующее / предыдущее отличие | Alt+↓ / Alt+↑ |
-| Скопировать текущее отличие вправо / влево | Alt+→ / Alt+← |
-| Сохранить | Ctrl/⌘+S |
-| Отменить / повторить | Ctrl/⌘+Z / Ctrl/⌘+Shift+Z |
-| Поиск / следующее совпадение | Ctrl/⌘+F, Enter, F3 |
-| Перейти к строке | Ctrl/⌘+L |
-| Перезагрузить и сравнить заново | F5 |
-| Новая вкладка / закрыть вкладку | Ctrl/⌘+T / Ctrl/⌘+W |
+| Next / previous difference | Alt+↓ / Alt+↑ |
+| Copy current difference right / left | Alt+→ / Alt+← |
+| Save | Ctrl/⌘+S |
+| Undo / redo | Ctrl/⌘+Z / Ctrl/⌘+Shift+Z |
+| Find / next match | Ctrl/⌘+F, Enter, F3 |
+| Go to line | Ctrl/⌘+L |
+| Reload and compare again | F5 |
+| New tab / close tab | Ctrl/⌘+T / Ctrl/⌘+W |
 
-## Устройство кода
+## Code layout
 
 ```
 src/
-  text/source.rs     mmap/буфер, индекс строк, определение кодировки и EOL
-  text/document.rs   построчная piece table, сохранение
-  diff/lines.rs      построчный diff (imara-diff, Histogram), модель строк отображения
-  diff/align.rs      выравнивание похожих строк внутри блока изменений
-  diff/inline.rs     пословный diff внутри строки
-  highlight.rs       фоновая подсветка синтаксиса с чекпоинтами
-  dircmp.rs          движок сравнения папок
-  ui/file_view.rs    вид сравнения файлов (собственная отрисовка)
-  ui/dir_view.rs     вид сравнения папок
-  ui/home.rs         стартовый экран
-  app.rs             вкладки, тема, настройки, горячие клавиши
-  autotest.rs        скриптовый драйвер UI для скриншот-тестов (feature `autotest`)
+  text/source.rs     mmap/buffer, line index, encoding and EOL detection
+  text/document.rs   line-based piece table, saving
+  diff/lines.rs      line diff (imara-diff, Histogram), display row model
+  diff/align.rs      alignment of similar lines inside a changed block
+  diff/inline.rs     word-level diff within a line
+  highlight.rs       background syntax highlighting with checkpoints
+  dircmp.rs          folder comparison engine
+  ui/file_view.rs    file comparison view (custom rendering)
+  ui/dir_view.rs     folder comparison view
+  ui/home.rs         start screen
+  app.rs             tabs, theme, settings, keyboard shortcuts
+  autotest.rs        scripted UI driver for screenshot tests (`autotest` feature)
 ```
 
-### Скриптовые UI-проверки
+### Scripted UI checks
 
 ```sh
 cargo build --release --features autotest
 DIRMERGE_SCRIPT="wait 2; key alt+ArrowDown; shot out.png; quit" ./target/release/dir-merge a.txt b.txt
 ```
 
-Команды скрипта: `wait <с>`, `key <mods+Key>`, `click x y`, `dclick x y`, `rclick x y`, `move x y`, `scroll <dy>`, `text <строка>`, `shot <файл.png>`, `quit`.
+Script commands: `wait <sec>`, `key <mods+Key>`, `click x y`, `dclick x y`, `rclick x y`, `move x y`, `scroll <dy>`, `text <string>`, `shot <file.png>`, `quit`.
