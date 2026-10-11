@@ -60,7 +60,30 @@ cargo build --release
 On Linux, building requires the X11/Wayland headers:
 `sudo apt install libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`.
 
-CI (`.github/workflows/ci.yml`) builds and tests the project on all three OSes.
+To package locally: `build_scripts/macos-bundle.sh` wraps a binary into `DirMerge.app`,
+`build_scripts/linux-deb.sh` builds a `.deb` (both write to `dist/` by default).
+
+## Releases
+
+Pushing a `v*` tag runs `.github/workflows/build.yml`: clippy, tests and release builds on Linux,
+Windows and macOS, then a GitHub release with the packages attached:
+
+| Platform | Package |
+|---|---|
+| macOS (Apple Silicon + Intel) | `dir-merge-macos-universal.zip` with `DirMerge.app` |
+| Windows x86_64 | `dir-merge-windows-x86_64.zip` with `dir-merge.exe` |
+| Linux x86_64 | `dir-merge-linux-x86_64.tar.gz` and `dir-merge_<version>_amd64.deb` |
+
+The tag must match the version in `Cargo.toml`:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The workflow can also be started by hand (Actions → Build → Run workflow); that builds the
+packages as workflow artifacts without publishing a release.
+
+The macOS app is ad-hoc signed, not notarized: open it the first time with right-click → Open.
 
 ## Keyboard shortcuts
 

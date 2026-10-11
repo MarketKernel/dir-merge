@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DirMerge
+Comment=Compare and merge files and folders
+Exec=dir-merge %F
+Icon=dir-merge
+Terminal=false
+Categories=Development;Utility;
+Keywords=diff;merge;compare;folder;directory;
+StartupWMClass=dir-merge

@@ -1,9 +1,11 @@
 [package]
 name = "dir-merge"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
+rust-version = "1.92"
 description = "Compare and merge files and folders"
 repository = "https://github.com/MarketKernel/dir-merge"
+license = "MIT"
 
 [dependencies]
 chardetng = "1.0.0"
@@ -27,6 +29,10 @@ trash = "5.2.9"
 two-face = { version = "0.5", default-features = false, features = ["syntect-fancy"] }
 walkdir = "2.5.0"
 xxhash-rust = { version = "0.8.19", features = ["xxh3"] }
+
+# Embeds the icon and version info into the .exe (only when building on Windows).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
 
 [features]
 # Scripted UI driver used for automated screenshots (DIRMERGE_SCRIPT env var).
